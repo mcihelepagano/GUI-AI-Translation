@@ -35,11 +35,12 @@ def translate(request: Request, text: str, lang: str = "English"):
     prompt = (
         f"Translate the following text to {lang}. "
         f"If the text is already in {lang}, return it exactly as-is. "
-        f"Do not explain, do not comment, and do not include any reasoning. "
-        f"Output ONLY the translation — no quotes, no preface, no extra text. "
+        f"Do not explain, do not comment, and do not include any reasoning or metadata. "
+        f"Output ONLY the translated sentence — no quotes, no preface, no labels, no commentary, no formatting. "
+        f"Preserve all numerals and symbols exactly as they appear, DO NOT translate them into natural language. "
         f"Input-text: {text}"
     )
-    response = ollama.generate(model='llama3.2:3b', prompt=prompt)
+    response = ollama.generate(model='gemma3:latest', prompt=prompt)  # "llama3.2:3b" | "nous-hermes2:latest" | "mistral:latest" | "gemma3:latest"
 
     with cache_lock:
         cache[cache_key] = response['response']
