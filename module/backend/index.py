@@ -1,9 +1,12 @@
 from fastapi import FastAPI, Response, Request
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import ollama
 import threading
 
 app = FastAPI()
+
+app.mount("/static", StaticFiles(directory="../frontend"), name="static")
 
 cache = {}
 cache_lock = threading.Lock()

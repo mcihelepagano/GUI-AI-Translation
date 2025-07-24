@@ -101,4 +101,14 @@ export function startTranslationObserver(serverUrl = "http://127.0.0.1:8000") {
     attributes: true,
     attributeFilter: ["data-i18n", "data-i18n-vars"],
   });
+
+  const initTextNodes = getAllTextNodesTreeWalker(document.body);
+  for (let textNode of initTextNodes) {
+    if (!temporarilyIgnoredNodes.has(textNode)) {
+      console.log("ADDED TEXT TO CHILDREN: ");
+      console.log(textNode.parentElement);
+      console.log(textNode.textContent);
+      translateTextNodeSafely(textNode);
+    }
+  }
 }
