@@ -2,7 +2,7 @@ import ollama
 import sacrebleu
 import time
 
-MODEL = "nous-hermes2:latest" # "llama3.2:3b" | "nous-hermes2:latest" | "mistral:latest" | "gemma3:latest"
+MODEL = "gemma3:latest" # "llama3.2:3b" | "nous-hermes2:latest" | "mistral:latest" | "gemma3:latest" | "gemma3:4b-it-qat"
 
 SOURCE_FILE = "europarl-v7.it-en.en"
 REFERENCE_FILE = "europarl-v7.it-en.it"
