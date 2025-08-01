@@ -4,7 +4,7 @@ export function startTranslationObserver(serverUrl = "http://127.0.0.1:8000") {
   const temporarilyIgnoredNodes = new WeakSet();
   let activeTranslationCount = 0;
   let cycleStartTime = null;
-  let currentLang = "it"; // Default language
+  let currentLang = (navigator.language || navigator.userLanguage).split('-')[0]; // default browser language
 
   injectLanguageDropdown();
 
