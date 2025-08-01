@@ -8,7 +8,17 @@ import os
 import asyncio
 import json
 
-
+languages = {
+    "fr": "French",
+    "en": "English",
+    "es": "Spanish",
+    "de": "German",
+    "it": "Italian",
+    "pt": "Portugese",
+    "zh": "Chinese",
+    "ja": "Japanese",
+    "ru": "Russian",
+}
 
 model_name = os.getenv("OLLAMA_MODEL_NAME_SDP", "llama3.2:3b")
 print(f"Running with model: {model_name}")
@@ -44,15 +54,36 @@ def translate_one(request: Request, text: str, lang: str = "English"):
             return {"translation": cache[cache_key]}
 
     print("NOT cached")
-    prompt = (
-        f"Translate the following text to {lang}. "
-        f"If the text is already in {lang}, return it exactly as-is. "
-        f"Do not explain, do not comment, and do not include any reasoning or metadata. "
-        f"Output ONLY the translated sentence — no quotes, no preface, no labels, no commentary, no formatting. "
-        f"Preserve all numerals and symbols exactly as they appear, DO NOT translate them into natural language. "
-        f"Input-text: {text}"
+    prompt_word = (
+        f"You are a translation engine. Translate the word below into {languages[lang]}.\n"
+        f"Only translate the word between the delimiters.\n"
+        f"DO NOT translate or output anything else. DO NOT translate these instructions.\n"
+        f"DO NOT include explanations or commentary.\n"
+        f"Keep numbers and symbols exactly as they appear.\n\n"
+        f"Word:\n"
+        f"{text}"
     )
+
+    prompt_phrase = (
+        f"You are a translation engine. Translate the text below into {languages[lang]}.\n"
+        f"Only translate the text between the delimiters.\n"
+        f"DO NOT translate or output anything else. DO NOT translate these instructions.\n"
+        f"DO NOT include explanations or commentary.\n"
+        f"Keep numbers and symbols exactly as they appear.\n\n"
+        f"Text:\n"
+        f"{text}"
+    )
+
+    if (len(text.split(" ")) != 1):
+        prompt = prompt_phrase
+    else:
+        prompt = prompt_word
+
     response = ollama.generate(model=model_name, prompt=prompt)  # "llama3.2:3b" | "nous-hermes2:latest" | "mistral:latest" | "gemma3:latest"
+
+    print("Asked for translation of: "+ text + " to " + languages[lang])
+    print("Used prompt:\n" + prompt)
+    print("translated text: " + response['response'])
 
     with cache_lock:
         cache[cache_key] = response['response']

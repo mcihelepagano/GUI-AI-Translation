@@ -4,6 +4,68 @@ export function startTranslationObserver(serverUrl = "http://127.0.0.1:8000") {
   const temporarilyIgnoredNodes = new WeakSet();
   let activeTranslationCount = 0;
   let cycleStartTime = null;
+  let currentLang = "it"; // Default language
+
+  injectLanguageDropdown();
+
+  function injectLanguageDropdown() {
+    const container = document.createElement("div");
+    container.style.position = "fixed";
+    container.style.bottom = "20px";
+    container.style.right = "20px";
+    container.style.zIndex = "10000";
+    container.style.backgroundColor = "#fff";
+    container.style.border = "1px solid #ccc";
+    container.style.borderRadius = "8px";
+    container.style.padding = "10px";
+    container.style.boxShadow = "0 2px 6px rgba(0, 0, 0, 0.2)";
+    container.style.fontFamily = "sans-serif";
+    container.classList.add("no-translate");
+
+    const label = document.createElement("label");
+    label.textContent = "Language:";
+    label.style.marginRight = "8px";
+    label.htmlFor = "language-selector";
+
+    const select = document.createElement("select");
+    select.id = "language-selector";
+    select.style.padding = "4px";
+
+    const languages = {
+      fr: "Français",
+      en: "English",
+      es: "Español",
+      de: "Deutsch",
+      it: "Italiano",
+      pt: "Português",
+      zh: "中文",
+      ja: "日本語",
+      ru: "Русский",
+    };
+
+    for (const [code, name] of Object.entries(languages)) {
+      const option = document.createElement("option");
+      option.value = code;
+      option.textContent = name;
+      if (code === currentLang) option.selected = true;
+      select.appendChild(option);
+    }
+
+    select.addEventListener("change", (e) => {
+      currentLang = e.target.value;
+      const textNodes = getAllTextNodesTreeWalker(document.body);
+      for (let textNode of textNodes) {
+        if (!temporarilyIgnoredNodes.has(textNode)) {
+          translateTextNodeSafely(textNode);
+        }
+      }
+    });
+
+    container.appendChild(label);
+    container.appendChild(select);
+    document.body.appendChild(container);
+  }
+
 
   function getAllTextNodesTreeWalker(rootElement) {
     const walker = document.createTreeWalker(rootElement, NodeFilter.SHOW_TEXT,
@@ -22,8 +84,25 @@ export function startTranslationObserver(serverUrl = "http://127.0.0.1:8000") {
     return textNodes;
   }
 
+  function findNoTranslateParent(node) {
+    let current = node;
+
+    while (current) {
+      if (
+        current.classList &&
+        current.classList.contains('no-translate')
+      ) {
+        return current;
+      }
+      current = current.parentNode;
+    }
+
+    return null;
+  }
+
   async function translateTextNodeSafely(node) {
-    if (el.classList.contains("no-translate") || el.tagName === "SCRIPT" || el.tagName === "STYLE") return;
+    const found = findNoTranslateParent(node);
+    if (found || node.parentElement.tagName === "SCRIPT" || node.parentElement.tagName === "STYLE") return;
 
     // Temporarly add node to the modified list 
     temporarilyIgnoredNodes.add(node);
@@ -35,7 +114,7 @@ export function startTranslationObserver(serverUrl = "http://127.0.0.1:8000") {
 
     try {
       const response = await fetch(
-        `${serverUrl}/translate-one?text=${encodeURIComponent(node.textContent)}&lang=fr`
+        `${serverUrl}/translate-one?text=${encodeURIComponent(node.textContent)}&lang=${encodeURIComponent(currentLang)}`
       );
       const data = await response.json();
       console.log(data.translation);
