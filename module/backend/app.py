@@ -8,20 +8,12 @@ import os
 import asyncio
 import json
 
-languages = {
-    "fr": "French",
-    "en": "English",
-    "es": "Spanish",
-    "de": "German",
-    "it": "Italian",
-    "pt": "Portugese",
-    "zh": "Chinese",
-    "ja": "Japanese",
-    "ru": "Russian",
-}
+import app_conf
+import app_utils
 
-model_name = os.getenv("OLLAMA_MODEL_NAME_SDP", "llama3.2:3b")
-print(f"Running with model: {model_name}")
+# pip install fastapi[all] ollama tiktoken
+
+
 
 app = FastAPI()
 
@@ -45,8 +37,16 @@ async def add_pna_header(request: Request, call_next):
     response.headers["Access-Control-Allow-Private-Network"] = "true"
     return response
 
+
+
 @app.get("/translate-one")
-def translate_one(request: Request, text: str, lang: str = "English"):
+def translate_one(request: Request, text: str, lang: str = ""):
+    if not lang or lang not in app_conf.languages:
+        return {"error": "Invalid or missing language parameter. Use lang=fr|en|es|de|it|pt|zh|ja|ru."}
+
+    if not text:
+        return {"error": "No text provided. Use text=... in the query."}
+    
     cache_key = (text, lang)
     with cache_lock:
         if cache_key in cache:
@@ -55,7 +55,7 @@ def translate_one(request: Request, text: str, lang: str = "English"):
 
     print("NOT cached")
     prompt_word = (
-        f"You are a translation engine. Translate the word below into {languages[lang]}.\n"
+        f"You are a translation engine. Translate the word below into {app_conf.languages[lang]}.\n"
         f"Only translate the word between the delimiters.\n"
         f"DO NOT translate or output anything else. DO NOT translate these instructions.\n"
         f"DO NOT include explanations or commentary.\n"
@@ -65,7 +65,7 @@ def translate_one(request: Request, text: str, lang: str = "English"):
     )
 
     prompt_phrase = (
-        f"You are a translation engine. Translate the text below into {languages[lang]}.\n"
+        f"You are a translation engine. Translate the text below into {app_conf.languages[lang]}.\n"
         f"Only translate the text between the delimiters.\n"
         f"DO NOT translate or output anything else. DO NOT translate these instructions.\n"
         f"DO NOT include explanations or commentary.\n"
@@ -79,9 +79,9 @@ def translate_one(request: Request, text: str, lang: str = "English"):
     else:
         prompt = prompt_word
 
-    response = ollama.generate(model=model_name, prompt=prompt)  # "llama3.2:3b" | "nous-hermes2:latest" | "mistral:latest" | "gemma3:latest"
+    response = ollama.generate(model=app_conf.model_name, prompt=prompt)  # "llama3.2:3b" | "nous-hermes2:latest" | "mistral:latest" | "gemma3:latest"
 
-    print("Asked for translation of: "+ text + " to " + languages[lang])
+    print("Asked for translation of: "+ text + " to " + app_conf.languages[lang])
     print("Used prompt:\n" + prompt)
     print("translated text: " + response['response'])
 
@@ -95,37 +95,52 @@ def translate_one(request: Request, text: str, lang: str = "English"):
 
 
 @app.get("/translate-many")
-async def translate_many(request: Request, lang: str = "English"):
+async def translate_many(request: Request, lang: str = ""):
+    if not lang or lang not in app_conf.languages:
+        return {"error": "Invalid or missing language parameter. Use lang=fr|en|es|de|it|pt|zh|ja|ru."}
+    
     texts = request.query_params.getlist("text")
     if not texts:
         return {"error": "No text provided. Use ?text=...&text=... in the query."}
-    prompt = (
-        f"Translate the following list of texts to {lang}. "
-        f"If a text is already in {lang}, return it exactly as-is. "
+    
+    base_prompt = (
+        f"Translate the following list of texts to {app_conf.languages[lang]}. "
+        f"If a text is already in {app_conf.languages[lang]}, return it exactly as-is. "
         f"Do not explain, do not comment, and do not include any reasoning or metadata. "
         f"The output should be a single string containing all original text translations, separated by new lines "
         f"in the following format: original_text_1 ===== translated_text_1\noriginal_text_2 ===== translated_text_2\n"
         f"Preserve all numerals and symbols exactly as they appear, DO NOT translate them into natural language. "
         f"The following are the input texts separated by new lines:"
     )
-    prompt += "\n".join(texts)
     
     #TODO logic that checks tokens and splits the request if too long
+    full_response = ""
+    current_batch = []
+    current_token_count = app_utils.count_tokens(base_prompt)
+
+    # Logic to split texts into batches that respect the token limit
+    for text in texts:
+        text_token_count = app_utils.count_tokens(f"\n{text}")
+
+        if current_token_count + text_token_count > app_conf.get_token_limit():
+            batch_prompt = base_prompt + "\n".join(current_batch)
+            stream = ollama.generate(model=app_conf.model_name, prompt=batch_prompt, stream=True)
+            for chunk in stream:
+                if "response" in chunk:
+                    full_response += chunk["response"]
+            
+            current_batch = [text]
+            current_token_count = app_utils.count_tokens(base_prompt) + text_token_count
+        else:
+            current_batch.append(text)
+            current_token_count += text_token_count
 
 
-    stream = ollama.generate(model=model_name, prompt=prompt, stream=True)
-
-    def stream_response():
-        buffer = ""
+    if current_batch:
+        batch_prompt = base_prompt + "\n".join(current_batch)
+        stream = ollama.generate(model=app_conf.model_name, prompt=batch_prompt, stream=True)
         for chunk in stream:
             if "response" in chunk:
-                buffer += chunk["response"]
-                if "\n" in buffer:
-                    parts = buffer.split("\n")
-                    for part in parts[:-1]:
-                        yield part + "\n"
-                    buffer = parts[-1]
-        if buffer:
-            yield buffer
+                full_response += chunk["response"]
 
-    return StreamingResponse(stream_response(), media_type="text/plain")
+    return Response(full_response, media_type="text/plain")

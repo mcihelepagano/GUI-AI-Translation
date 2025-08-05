@@ -68,7 +68,7 @@ def start_fastapi(script, model_name):
 def main():
     try:
         model_name = "llama3.2:3b"
-        fastapi_script = "index.py"
+        fastapi_script = "app.py"
 
         ollama_proc = start_ollama(model_name)
         time.sleep(5) 
