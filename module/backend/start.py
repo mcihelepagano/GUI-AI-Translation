@@ -36,7 +36,8 @@ def start_ollama(model_name):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         bufsize=1,
-        text=True
+        text=True,
+        encoding='utf-8'
     )
     threading.Thread(
         target=stream_output, args=(proc.stdout, "OLLAMA"), daemon=True
@@ -49,12 +50,14 @@ def start_fastapi(script, model_name):
     
     env = os.environ.copy()
     env["OLLAMA_MODEL_NAME_SDP"] = model_name
+    env["PYTHONIOENCODING"] = "utf-8"
     proc = subprocess.Popen(
         [sys.executable, "-m", "fastapi", "dev", script],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         bufsize=1,
         text=True,
+        encoding='utf-8',
         env=env
     )
     threading.Thread(target=stream_output, args=(proc.stdout, "SERVER"), daemon=True).start()
