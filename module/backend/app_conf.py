@@ -1,19 +1,6 @@
 
 import os
 
-
-languages = {
-    "fr": "French",
-    "en": "English",
-    "es": "Spanish",
-    "de": "German",
-    "it": "Italian",
-    "pt": "Portugese",
-    "zh": "Chinese",
-    "ja": "Japanese",
-    "ru": "Russian",
-}
-
 model_name = os.getenv("OLLAMA_MODEL_NAME_SDP", "llama3.2:3b")
 print(f"Running with model: {model_name}")
 
@@ -30,3 +17,16 @@ def get_token_limit() -> int:
         return 4096
     else:
         return 2048
+    
+
+languages = {
+    "fr": "French",
+    "en": "English",
+    "es": "Spanish",
+    "de": "German",
+    "it": "Italian",
+    "pt": "Portugese",
+    "zh": "Chinese",
+    "ja": "Japanese",
+    "ru": "Russian",
+}
