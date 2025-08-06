@@ -10,6 +10,10 @@
   background-color:rgb(243, 243, 243);
 }
 
+.white-bg {
+  background-color: white;
+}
+
 .blue-text {
   color: #00265A !important;
 }
@@ -109,4 +113,8 @@ p {
 
 .article-column {
   border-right: 1px solid #ccc;
+}
+
+.icons-company {
+  width: 95px;
 }

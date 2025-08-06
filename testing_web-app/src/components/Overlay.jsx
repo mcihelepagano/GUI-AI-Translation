@@ -58,7 +58,7 @@ export default function Overlay() {
           <Link to="#settori" className="fw-bold blue-text nav-link p-3">SETTORI</Link>
           <Link to="#postvendita" className="fw-bold blue-text nav-link p-3">POST VENDITA</Link>
           <Link to="#news" className="fw-bold blue-text nav-link p-3">NEWS & EVENTI</Link>
-          <Link to="#azienda" className="fw-bold blue-text nav-link p-3">AZIENDA</Link>
+          <Link to="/company" className="fw-bold blue-text nav-link p-3">AZIENDA</Link>
           <Link to="#lavoro" className="fw-bold blue-text nav-link p-3">LAVORA CON NOI</Link>
           <Link to="#contatti" className="fw-bold blue-text nav-link p-3">CONTATTI</Link>
         </Nav>
@@ -116,7 +116,7 @@ export default function Overlay() {
 
     {/* Cookie banner */}
     {showCookieBanner && (
-      <Alert variant="light" className=" shadow-lg position-fixed bottom-0 w-100 z-3 mb-0">
+      <Alert variant="light" className=" shadow-lg position-fixed bottom-0 w-100 z-3 mb-0" style={{zIndex: 9}}>
         <Container fluid className="coockie-banner">
           <Row>
             <Col className="justify-content-end text-end">
