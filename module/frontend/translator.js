@@ -4,7 +4,11 @@ export function startTranslationObserver(serverUrl = "http://127.0.0.1:8000") {
   const temporarilyIgnoredNodes = new WeakSet();
   let activeTranslationCount = 0;
   let cycleStartTime = null;
-  let currentLang = (navigator.language || navigator.userLanguage).split('-')[0]; // default browser language
+  let originalLang = document.documentElement.lang;
+  if (!originalLang) {
+    originalLang = (navigator.language || navigator.userLanguage).split('-')[0]; // default browser language
+  }
+  let currentLang = originalLang;
 
   injectLanguageDropdown();
 
@@ -47,18 +51,22 @@ export function startTranslationObserver(serverUrl = "http://127.0.0.1:8000") {
       const option = document.createElement("option");
       option.value = code;
       option.textContent = name;
-      if (code === currentLang) option.selected = true;
+      if (code === originalLang) {
+        option.selected = true;
+        option.textContent = name + " (Original)";
+      }
       select.appendChild(option);
     }
 
     select.addEventListener("change", (e) => {
       currentLang = e.target.value;
-      const textNodes = getAllTextNodesTreeWalker(document.body);
-      for (let textNode of textNodes) {
-        if (!temporarilyIgnoredNodes.has(textNode)) {
-          translateTextNodeSafely(textNode);
-        }
+      console.log(`Language changed to: ${currentLang}`);
+      if (currentLang == originalLang) {
+        location.reload();
+        return;
       }
+
+      loadPageTranslated_translate_many();
     });
 
     container.appendChild(label);
@@ -73,7 +81,8 @@ export function startTranslationObserver(serverUrl = "http://127.0.0.1:8000") {
         return (
           node.nodeValue.trim().length > 0 &&
           node.parentElement.tagName !== "SCRIPT" &&
-          node.parentElement.tagName !== "STYLE"
+          node.parentElement.tagName !== "STYLE" &&
+          !findNoTranslateParent(node) // <-- check if the parent has the no-translate class
         );
       });
     const textNodes = [];
@@ -137,6 +146,9 @@ export function startTranslationObserver(serverUrl = "http://127.0.0.1:8000") {
   }
 
   const observer = new MutationObserver((mutations) => {
+    if (currentLang == originalLang) {
+      return;
+    }
     mutations.forEach((mutation) => {
       switch (mutation.type) {
 
@@ -200,7 +212,6 @@ export function startTranslationObserver(serverUrl = "http://127.0.0.1:8000") {
       }
     }
   }
-  //loadPageTranslated_translate_one()
 
 
 
@@ -224,7 +235,7 @@ export function startTranslationObserver(serverUrl = "http://127.0.0.1:8000") {
       }
     }
 
-    translateWithStreaming(textsToTranslate, "eng", (line) => {
+    translateWithStreaming(textsToTranslate, currentLang, (line) => {
       if (!line.includes(" ===== ")) return Promise.resolve();
 
       const [originalText, translatedText] = line.split(" ===== ");
@@ -244,8 +255,6 @@ export function startTranslationObserver(serverUrl = "http://127.0.0.1:8000") {
     });
   }
 
-  loadPageTranslated_translate_many()
-
 
   async function translateWithStreaming(texts, lang, onLineReceived) {
     if (!texts || texts.length === 0) {
@@ -253,17 +262,26 @@ export function startTranslationObserver(serverUrl = "http://127.0.0.1:8000") {
       return Promise.resolve([]);;
     }
 
-    const params = new URLSearchParams();
-    texts.forEach(text => params.append("text", text));
-    params.append("lang", lang);
-
-    const url = `${serverUrl}/translate-many?${params.toString()}`;
     const promises = [];
     try {
-      const response = await fetch(url);
+
+      const params = new URLSearchParams();
+      params.append("lang", lang);
+      const url = `${serverUrl}/translate-many?${params.toString()}`;
+      const body = {
+        texts: texts
+      };
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
 
       if (!response.body) {
-        console.error("The response body is not a readable stream.");
+        const errorText = await response.text();
+        console.error(`HTTP error ${response.status}: ${errorText}`);
         return Promise.reject(new Error("Response body is not a readable stream."));
       }
 

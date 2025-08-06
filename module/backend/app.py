@@ -1,8 +1,9 @@
-from fastapi import FastAPI, Response, Request, Query, HTTPException
+from fastapi import FastAPI, Response, Request, Query, HTTPException, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from typing import Annotated
+from typing import List
+from pydantic import BaseModel
 import ollama
 import threading
 
@@ -25,15 +26,9 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
-    allow_credentials=True,
-    max_age=86400
+    allow_credentials=False,
 )
 
-@app.middleware("http")
-async def add_pna_header(request: Request, call_next):
-    response = await call_next(request)
-    response.headers["Access-Control-Allow-Private-Network"] = "true"
-    return response
 
 
 
@@ -72,15 +67,19 @@ def translate_one(request: Request, text: str, lang: str = ""):
 
 
 
-@app.get("/translate-many")
-async def translate_many(request: Request, lang: str = "", text: Annotated[list[str], Query()] = []):
+
+class TextList(BaseModel):
+    texts: List[str]
+
+@app.post("/translate-many")
+async def translate_many(request: Request, body: TextList, lang: str = Query(...)):
     if not lang or lang not in app_conf.languages:
         raise HTTPException(status_code=400, detail="Invalid or missing language parameter. Use lang=fr|en|es|de|it|pt|zh|ja|ru.")
 
-    if not text:
+    if not body or not body.texts:
         raise HTTPException(status_code=400, detail="No text provided. Use ?text=...&text=... in the query.")
     
-    prompts = app_utils.split_prompts_by_token_limit("phrase_list", lang, text)
+    prompts = app_utils.split_prompts_by_token_limit("phrase_list", lang, body.texts)
 
     return StreamingResponse(
         stream_AI_response(prompts),
