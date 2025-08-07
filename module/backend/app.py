@@ -6,6 +6,7 @@ from typing import List
 from pydantic import BaseModel
 import ollama
 import threading
+import string
 
 import app_conf
 import app_utils
@@ -48,21 +49,32 @@ def translate_one(request: Request, text: str, lang: str = ""):
 
     print("NOT cached")
 
-    if (len(text.split(" ")) != 1):
-        prompt = app_utils.get_prompt("phrase", app_conf.languages[lang], [text])
+    symbol_chars = "!\"#$%&'*+,-/:;<=>?@[\]^_`{|}~" + " "
+
+    leading_spaces = len(text) - len(text.lstrip(symbol_chars))
+    trailing_spaces = len(text) - len(text.rstrip(symbol_chars))
+    original_leading = text[:leading_spaces]
+    original_trailing = text[len(text) - trailing_spaces:]
+
+    stripped_text = text.strip(symbol_chars)
+
+    if (len(stripped_text.split(" ")) != 1):
+        prompt = app_utils.get_prompt("phrase", app_conf.languages[lang], [stripped_text])
     else:
-        prompt = app_utils.get_prompt("word", app_conf.languages[lang], [text])
+        prompt = app_utils.get_prompt("word", app_conf.languages[lang], [stripped_text])
 
     response = ollama.generate(model=app_conf.model_name, prompt=prompt)  # "llama3.2:3b" | "nous-hermes2:latest" | "mistral:latest" | "gemma3:latest"
 
+    translation = original_leading + response["response"] + original_trailing
+
     print("Asked for translation of: "+ text + " to " + app_conf.languages[lang])
     print("Used prompt:\n" + prompt)
-    print("translated text: " + response['response'])
+    print("translated text: " + translation)
 
     with cache_lock:
-        cache[cache_key] = response['response']
+        cache[cache_key] = translation
 
-    return {"translation": response['response']}
+    return {"translation": translation}
 
 
 

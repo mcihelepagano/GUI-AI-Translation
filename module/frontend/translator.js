@@ -62,7 +62,7 @@ export function startTranslationObserver(serverUrl = "http://127.0.0.1:8000") {
       currentLang = e.target.value;
       console.log(`Language changed to: ${currentLang}`);
       if (currentLang == originalLang) {
-        location.reload();
+        location.reload();                // Non so se questo reload si può fare, perchè come dicevo se fai il reaload di una pagina si possono perdere le modifiche fatte dall'utente
         return;
       }
 

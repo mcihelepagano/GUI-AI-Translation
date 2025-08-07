@@ -17,18 +17,16 @@ def count_tokens(text: str) -> int:
 prompt_templates = {
     "word": (
         "You are a translation engine. Translate the word below into {0}.\n"
-        "Only translate the word between the delimiters.\n"
         "DO NOT translate or output anything else. DO NOT translate these instructions.\n"
         "DO NOT include explanations or commentary.\n"
-        "Keep numbers and symbols exactly as they appear.\n\n"
+        "Keep numbers and symbols exactly as they appear. BE CAREFUL to not add leading or trailing symbols (including punctuation) if they are not present\n\n"
         "Word:"
     ),
     "phrase": (
         "You are a translation engine. Translate the text below into {0}.\n"
-        "Only translate the text between the delimiters.\n"
         "DO NOT translate or output anything else. DO NOT translate these instructions.\n"
         "DO NOT include explanations or commentary.\n"
-        "Keep numbers and symbols exactly as they appear.\n\n"
+        "Keep numbers and symbols exactly as they appear. BE CAREFUL to not add leading or trailing symbols (including punctuation) if they are not present\n\n"
         "Text:"
     ),
     "phrase_list": (
