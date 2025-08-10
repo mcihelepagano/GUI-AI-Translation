@@ -35,7 +35,7 @@ prompt_templates = {
         "Do not explain, do not comment, and do not include any reasoning or metadata. "
         "The output should be a single string containing all original text translations, separated by new lines "
         "in the following format: original_text_1 ===== translated_text_1\noriginal_text_2 ===== translated_text_2\n"
-        "Preserve all numerals and symbols exactly as they appear, DO NOT translate them into natural language. "
+        "Preserve all numerals and symbols exactly as they appear, DO NOT translate them into natural language. print the original text always as-is without changing it.\n"
         "The following are the input texts separated by new lines:"
     )
 }

@@ -1,249 +1,314 @@
 // should be called in the main.jsx of a react application using startTranslationObserver() or startTranslationObserver(server_url)
 
-export function startTranslationObserver(serverUrl = "http://127.0.0.1:8000") {
+export default function startTranslationObserver(
+  serverUrl = "http://127.0.0.1:8000",
+  languageCodes = ['fr', 'en', 'es', 'de', 'it', 'pt', 'zh', 'ja', 'ru'],
+  selectPosition = "position: fixed; bottom: 20px; right: 20px;",
+) {
+
+  // MODULE SETUP
+  const root = document.body;
   const temporarilyIgnoredNodes = new WeakSet();
-  let activeTranslationCount = 0;
-  let cycleStartTime = null;
   let originalLang = document.documentElement.lang;
   if (!originalLang) {
     originalLang = (navigator.language || navigator.userLanguage).split('-')[0]; // default browser language
   }
   let currentLang = originalLang;
 
-  injectLanguageDropdown();
+  function evalShouldTranslate() {
+    return currentLang !== originalLang;
+  }
 
-  function injectLanguageDropdown() {
-    const container = document.createElement("div");
-    container.style.position = "fixed";
-    container.style.bottom = "20px";
-    container.style.right = "20px";
-    container.style.zIndex = "10000";
-    container.style.backgroundColor = "#fff";
-    container.style.border = "1px solid #ccc";
-    container.style.borderRadius = "8px";
-    container.style.padding = "10px";
-    container.style.boxShadow = "0 2px 6px rgba(0, 0, 0, 0.2)";
-    container.style.fontFamily = "sans-serif";
-    container.classList.add("no-translate");
 
-    const label = document.createElement("label");
-    label.textContent = "Language:";
-    label.style.marginRight = "8px";
-    label.htmlFor = "language-selector";
+  const textNodeToStringAll = new Map();   // TextNode => string content all page
+  const stringToTextNodes = new Map();  // string content => [TextNodes]
 
-    const select = document.createElement("select");
-    select.id = "language-selector";
-    select.style.padding = "4px";
-
-    const languages = {
-      fr: "Français",
-      en: "English",
-      es: "Español",
-      de: "Deutsch",
-      it: "Italiano",
-      pt: "Português",
-      zh: "中文",
-      ja: "日本語",
-      ru: "Русский",
-    };
-
-    for (const [code, name] of Object.entries(languages)) {
-      const option = document.createElement("option");
-      option.value = code;
-      option.textContent = name;
-      if (code === originalLang) {
-        option.selected = true;
-        option.textContent = name + " (Original)";
+  let isDomChanging = true;
+  function waitForDomStable() {
+    return new Promise((resolve) => {
+      function checkDom() {
+        if (!isDomChanging) {
+          resolve();
+        } else {
+          console.log("Waiting for DOM changes to finish...");
+          setTimeout(checkDom, 100);
+        }
       }
-      select.appendChild(option);
-    }
+      checkDom();
+    });
+  }
 
-    select.addEventListener("change", (e) => {
+
+  let isTranslating = false;
+
+  function setIsTranslating(value) {
+    isTranslating = value;
+    document.getElementById("module-language-selector").disabled = value;
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    addTextNodes(root);
+    injectSelectHTML();
+
+    isDomChanging = false;
+    console.log("Initial scan complete. Observing for changes...");
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["data-i18n", "data-i18n-vars"],
+    });
+  });
+
+
+  // MODULE HTML INJECTION
+
+  function injectSelectHTML() {
+    const html = `
+      <div 
+        id="injected-module-language-selector-wrapper"
+        style="${selectPosition} z-index: 10000; cursor: pointer; font-family: sans-serif;"
+        class="no-translate"
+        onmouseenter="
+          document.getElementById('module-language-selector-display').style.display='none'; 
+          document.getElementById('module-language-selector-container').style.display='block';
+        "
+        onmouseleave="
+          document.getElementById('module-language-selector-container').style.display='none'; 
+          document.getElementById('module-language-selector-display').style.display='block';
+        "
+      >
+        <div 
+          id="module-language-selector-display"
+          class="no-translate" 
+          style="
+            background: white; 
+            border: 1px solid #ccc; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2); 
+            width: 40px; 
+            height: 40px; 
+            line-height: 40px; 
+            font-size: 20px; 
+            text-align: center;
+            user-select: none;
+          "
+        >
+          🌐
+        </div>
+        <div 
+          id="module-language-selector-container"
+          class="no-translate" 
+          style="
+            display: none;
+            background: white; 
+            border: 1px solid #ccc; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            padding: 10px;
+            white-space: nowrap;
+          "
+        >
+          <label for="module-language-selector" style="margin-right: 8px;">Language:</label>
+          <select id="module-language-selector" style="padding: 4px;"></select>
+        </div>
+      </div>
+      `;
+    document.body.insertAdjacentHTML("beforeend", html);
+
+    injectSelectOptionsHTML();
+
+    document.getElementById("module-language-selector").addEventListener("change", async (e) => {
       currentLang = e.target.value;
       console.log(`Language changed to: ${currentLang}`);
-      if (currentLang == originalLang) {
-        location.reload();                // Non so se questo reload si può fare, perchè come dicevo se fai il reaload di una pagina si possono perdere le modifiche fatte dall'utente
-        return;
+      if (currentLang === originalLang) {
+        loadOriginalText();
+      } else {
+        await loadPageTranslated_translate_many();
+
+        injectSelectOptionsHTML();
       }
-
-      loadPageTranslated_translate_many();
     });
-
-    container.appendChild(label);
-    container.appendChild(select);
-    document.body.appendChild(container);
   }
 
+  function injectSelectOptionsHTML() {
+    const displayNames = new Intl.DisplayNames([currentLang], { type: 'language' });
 
-  function getAllTextNodesTreeWalker(rootElement) {
-    const walker = document.createTreeWalker(rootElement, NodeFilter.SHOW_TEXT,
-      (node) => {
-        return (
-          node.nodeValue.trim().length > 0 &&
-          node.parentElement.tagName !== "SCRIPT" &&
-          node.parentElement.tagName !== "STYLE" &&
-          !findNoTranslateParent(node) // <-- check if the parent has the no-translate class
-        );
-      });
-    const textNodes = [];
-    let node;
-    while ((node = walker.nextNode())) {
-      textNodes.push(node);
+    const languages = {};
+    for (const code of languageCodes) {
+      languages[code] = displayNames.of(code);
     }
-    return textNodes;
+    let optionsHTML = "";
+    for (const [code, name] of Object.entries(languages)) {
+      let text = name;
+      let selected = "";
+      if (code === originalLang) {
+        text += " (Original)";
+      }
+      if (code === currentLang) {
+        selected = " selected";
+      }
+      optionsHTML += `<option value="${code}"${selected}>${text}</option>`;
+    }
+
+    document.getElementById("module-language-selector").innerHTML = optionsHTML;
   }
 
-  function findNoTranslateParent(node) {
-    let current = node;
 
+  function isTranslateIgnore(node) {
+    if (!node.parentElement) return false;
+    if (node.tagName === "SCRIPT" || node.tagName === "STYLE") return true;
+    let current = node;
     while (current) {
       if (
         current.classList &&
         current.classList.contains('no-translate')
       ) {
-        return current;
+        return true;
       }
       current = current.parentNode;
     }
-
-    return null;
+    return false;
   }
 
-  async function translateTextNodeSafely(node) {
-    const found = findNoTranslateParent(node);
-    if (found || node.parentElement.tagName === "SCRIPT" || node.parentElement.tagName === "STYLE") return;
-
-    // Temporarly add node to the modified list 
-    temporarilyIgnoredNodes.add(node);
-
-    if (activeTranslationCount === 0) {
-      cycleStartTime = performance.now();
-    }
-    activeTranslationCount++;
-
-    try {
-      const response = await fetch(
-        `${serverUrl}/translate-one?text=${encodeURIComponent(node.textContent)}&lang=${encodeURIComponent(currentLang)}`
-      );
-      const data = await response.json();
-      console.log(data.translation);
-      node.textContent = data.translation;
-    } catch (err) {
-      console.log("Error retrieving translation", err);
+  // Add a text node to both maps if not ignored
+  function addTextNodes(node, shouldTranslate) {
+    if (isTranslateIgnore(node)) return;
+    if (node.nodeType !== Node.TEXT_NODE) {
+      node.childNodes.forEach(addTextNodes);
     }
 
-    // After this task completes, allow observing again on the node added to the temporarly modified list
-    Promise.resolve().then(() => {
-      temporarilyIgnoredNodes.delete(node); // <-- this weakset cleanup is queued after the MutationObserver callback so that the change is not detected fo the same loop
-      activeTranslationCount--;
+    const text = node.nodeValue;
+    if (!text || text.trim().length === 0) return;
 
-      if (activeTranslationCount === 0 && cycleStartTime !== null) {
-        const duration = performance.now() - cycleStartTime;
-        console.log(`Translation cycle complete in ${duration} ms`);
-        cycleStartTime = null;
+    textNodeToStringAll.set(node, text);
+    if (shouldTranslate)
+      translateTextNodeSafely(node)
+
+    if (!stringToTextNodes.has(text)) {
+      stringToTextNodes.set(text, []);
+    }
+    stringToTextNodes.get(text).push(node);
+  }
+
+  // Remove a text node from both maps
+  function removeTextNodes(node) {
+    if (isTranslateIgnore(node)) return;
+    if (node.nodeType !== Node.TEXT_NODE) {
+      node.childNodes.forEach(removeTextNodes);
+    }
+
+    const oldText = textNodeToStringAll.get(node);
+    textNodeToStringAll.delete(node);
+
+    if (oldText !== undefined) {
+      const arr = stringToTextNodes.get(oldText);
+      if (arr) {
+        const index = arr.indexOf(node);
+        if (index > -1) {
+          arr.splice(index, 1);
+          if (arr.length === 0) {
+            stringToTextNodes.delete(oldText);
+          }
+        }
       }
-    });
+    }
   }
 
-  const observer = new MutationObserver((mutations) => {
-    if (currentLang == originalLang) {
+
+  // Update a text node's string content in both maps
+  function updateTextNode(node, newText, shouldTranslate) {
+    if (temporarilyIgnoredNodes.has(node)) {
+      temporarilyIgnoredNodes.delete(node);
       return;
     }
-    mutations.forEach((mutation) => {
+
+    if (node.nodeType !== Node.TEXT_NODE) return;
+    if (isTranslateIgnore(node)) return;
+
+    const oldText = textNodeToStringAll.get(node);
+    if (oldText === newText) return; // no change
+
+    // Remove from old stringToTextNodes entry
+    if (oldText !== undefined) {
+      const oldArr = stringToTextNodes.get(oldText);
+      if (oldArr) {
+        const index = oldArr.indexOf(node);
+        if (index > -1) {
+          oldArr.splice(index, 1);
+          if (oldArr.length === 0) {
+            stringToTextNodes.delete(oldText);
+          }
+        }
+      }
+    }
+
+    // Add to new stringToTextNodes entry
+    if (!stringToTextNodes.has(newText)) {
+      stringToTextNodes.set(newText, []);
+    }
+    stringToTextNodes.get(newText).push(node);
+
+    // Update map with new text
+    textNodeToStringAll.set(node, newText);
+    if (shouldTranslate)
+      translateTextNodeSafely(node)
+  }
+
+  const observer = new MutationObserver(mutations => {
+    let shouldTranslate = evalShouldTranslate();
+    isDomChanging = true;
+    mutations.forEach(mutation => {
       switch (mutation.type) {
 
         case "childList":
-          mutation.addedNodes.forEach((node) => {
-            if (node.nodeType === Node.TEXT_NODE) { // <-- added nodes that are text nodes
-              if (!temporarilyIgnoredNodes.has(node)) {
-                console.log("ADDED TEXT: ");
-                console.log(node.parentElement);
-                console.log(node.textContent);
-                translateTextNodeSafely(node);
-              }
-            } else { // <-- if the added node is not a text node find all children that are text nodes
-              const textNodes = getAllTextNodesTreeWalker(node);
-              for (let textNode of textNodes) {
-                if (!temporarilyIgnoredNodes.has(textNode)) {
-                  console.log("ADDED TEXT TO CHILDREN: ");
-                  console.log(textNode.parentElement);
-                  console.log(textNode.textContent);
-                  translateTextNodeSafely(textNode);
-                }
-              }
-            }
+          mutation.addedNodes.forEach(node => {
+            addTextNodes(node, shouldTranslate);
+          });
+          mutation.removedNodes.forEach(node => {
+            removeTextNodes(node);
           });
           break;
 
-        case "characterData": // <-- modified text nodes
-          const node = mutation.target;
-          if (!temporarilyIgnoredNodes.has(node)) {
-            console.log("MODIFIED NODE: ");
-            console.log(node.parentElement);
-            translateTextNodeSafely(node);
-          }
+        case "characterData":
+          updateTextNode(mutation.target, mutation.target.nodeValue, shouldTranslate);
           break;
       }
     });
-  });
 
-
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-    characterData: true,
-    attributes: true,
-    attributeFilter: ["data-i18n", "data-i18n-vars"],
+    isDomChanging = false;
+    console.log(`Found ${textNodeToStringAll.size} text nodes.`, textNodeToStringAll);
   });
 
 
 
-  // ON LOADING
 
-
-  function loadPageTranslated_translate_one() {
-    const initTextNodes = getAllTextNodesTreeWalker(document.body);
-    for (let textNode of initTextNodes) {
-      if (!temporarilyIgnoredNodes.has(textNode)) {
-        console.log("ADDED TEXT TO CHILDREN: ");
-        console.log(textNode.parentElement);
-        console.log(textNode.textContent);
-        translateTextNodeSafely(textNode);
-      }
-    }
+  async function loadOriginalText() {
+    setIsTranslating(true);
+    await waitForDomStable();
+    textNodeToStringAll.forEach((text, node) => {
+      temporarilyIgnoredNodes.add(node);
+      node.nodeValue = text;
+    });
+    setIsTranslating(false);
   }
 
 
+  async function loadPageTranslated_translate_many() {
+    setIsTranslating(true);
+    const textsToTranslate = Array.from(stringToTextNodes.keys());
 
-
-  function loadPageTranslated_translate_many() {
-    const originalTextToNodesMap = new Map();
-    const textsToTranslate = [];
-
-    const initTextNodes = getAllTextNodesTreeWalker(document.body);
-
-    for (let textNode of initTextNodes) {
-      if (!temporarilyIgnoredNodes.has(textNode)) {
-        const originalText = textNode.textContent;
-
-        if (!originalTextToNodesMap.has(originalText)) {
-          originalTextToNodesMap.set(originalText, []);
-          textsToTranslate.push(originalText);
-        }
-
-        originalTextToNodesMap.get(originalText).push(textNode);
-      }
-    }
-
-    translateWithStreaming(textsToTranslate, currentLang, (line) => {
+    const ret = await translateWithStreaming(textsToTranslate, currentLang, (line) => {
       if (!line.includes(" ===== ")) return Promise.resolve();
 
       const [originalText, translatedText] = line.split(" ===== ");
-      const nodes = originalTextToNodesMap.get(originalText);
+      const nodes = stringToTextNodes.get(originalText);
 
       if (nodes && nodes.length > 0) {
         nodes.forEach(textNode => {
           if (textNode.textContent === originalText) {
+            temporarilyIgnoredNodes.add(textNode);
             textNode.textContent = translatedText;
           }
         });
@@ -253,7 +318,11 @@ export function startTranslationObserver(serverUrl = "http://127.0.0.1:8000") {
 
       return Promise.resolve();
     });
+
+    setIsTranslating(false);
+    return ret;
   }
+
 
 
   async function translateWithStreaming(texts, lang, onLineReceived) {
@@ -314,4 +383,23 @@ export function startTranslationObserver(serverUrl = "http://127.0.0.1:8000") {
     }
     return Promise.all(promises);
   }
+
+  async function translateTextNodeSafely(node) {
+    temporarilyIgnoredNodes.add(node);
+    try {
+      const response = await fetch(
+        `${serverUrl}/translate-one?text=${encodeURIComponent(node.textContent)}&lang=${encodeURIComponent(currentLang)}`
+      );
+      const data = await response.json();
+      console.log(data.translation);
+      node.textContent = data.translation;
+    } catch (err) {
+      console.log("Error retrieving translation", err);
+    }
+
+    // After this task completes, allow observing again on the node added to the temporarly modified list
+    Promise.resolve();
+  }
+
+
 }

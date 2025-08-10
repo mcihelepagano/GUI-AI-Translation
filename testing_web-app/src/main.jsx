@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router'
 import './index.css'
 import App from './App.jsx'
 
-import {startTranslationObserver} from '../../module/frontend/translator.js'
+import startTranslationObserver from '../../module/frontend/translator.js'
 
 startTranslationObserver();
 

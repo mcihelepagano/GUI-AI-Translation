@@ -110,9 +110,11 @@ def stream_AI_response(prompts: list[str]):
                     if "\n" in buffer:
                         parts = buffer.split("\n")
                         for part in parts[:-1]:
+                            print(part, flush=True)
                             yield part + "\n"
                         buffer = parts[-1]
             if buffer:
+                print(buffer, flush=True)
                 yield buffer + "\n"
 
     return generator()
