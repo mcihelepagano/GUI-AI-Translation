@@ -9,6 +9,7 @@ export default function startTranslationObserver(
   // MODULE SETUP
   const root = document.body;
   const temporarilyIgnoredNodes = new WeakSet();
+  let activeTranslationCount = 0;
   let originalLang = document.documentElement.lang;
   if (!originalLang) {
     originalLang = (navigator.language || navigator.userLanguage).split('-')[0]; // default browser language
@@ -47,7 +48,7 @@ export default function startTranslationObserver(
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    addTextNodes(root);
+    addTextNodes(root, evalShouldTranslate());
     injectSelectHTML();
 
     isDomChanging = false;
@@ -125,7 +126,7 @@ export default function startTranslationObserver(
       if (currentLang === originalLang) {
         loadOriginalText();
       } else {
-        await loadPageTranslated_translate_many();
+        await loadPageTranslated_translate_one();
 
         injectSelectOptionsHTML();
       }
@@ -163,7 +164,7 @@ export default function startTranslationObserver(
     while (current) {
       if (
         current.classList &&
-        current.classList.contains('no-translate')
+        current.classList.contains("no-translate")
       ) {
         return true;
       }
@@ -172,19 +173,20 @@ export default function startTranslationObserver(
     return false;
   }
 
-  // Add a text node to both maps if not ignored
+  // Add a text node to both maps if not ignored 
   function addTextNodes(node, shouldTranslate) {
     if (isTranslateIgnore(node)) return;
     if (node.nodeType !== Node.TEXT_NODE) {
-      node.childNodes.forEach(addTextNodes);
+      node.childNodes.forEach(child => addTextNodes(child, shouldTranslate));
     }
 
     const text = node.nodeValue;
     if (!text || text.trim().length === 0) return;
 
     textNodeToStringAll.set(node, text);
-    if (shouldTranslate)
-      translateTextNodeSafely(node)
+    if (shouldTranslate) {
+      translateTextNodeSafely(node);
+    }
 
     if (!stringToTextNodes.has(text)) {
       stringToTextNodes.set(text, []);
@@ -264,15 +266,21 @@ export default function startTranslationObserver(
 
         case "childList":
           mutation.addedNodes.forEach(node => {
-            addTextNodes(node, shouldTranslate);
+            if (!temporarilyIgnoredNodes.has(node)) {
+              addTextNodes(node, shouldTranslate);
+            }
           });
           mutation.removedNodes.forEach(node => {
-            removeTextNodes(node);
+            if (!temporarilyIgnoredNodes.has(node)) {
+              removeTextNodes(node);
+            }
           });
           break;
 
         case "characterData":
-          updateTextNode(mutation.target, mutation.target.nodeValue, shouldTranslate);
+          if (!temporarilyIgnoredNodes.has(mutation.target)) {
+            updateTextNode(mutation.target, mutation.target.nodeValue, shouldTranslate);
+          }
           break;
       }
     });
@@ -290,8 +298,53 @@ export default function startTranslationObserver(
     textNodeToStringAll.forEach((text, node) => {
       temporarilyIgnoredNodes.add(node);
       node.nodeValue = text;
+      Promise.resolve().then( () => {
+        temporarilyIgnoredNodes.delete(node); // <-- this weakset cleanup is queued after the MutationObserver callback is queued so that the change is not detected fo the same loop
+      });
     });
     setIsTranslating(false);
+  }
+
+  function loadPageTranslated_translate_one() {
+    const initTextNodes = getAllTextNodesTreeWalker(document.body);
+    for (let textNode of initTextNodes) {
+      if (!temporarilyIgnoredNodes.has(textNode)) {
+        translateTextNodeSafely(textNode);
+      }
+    }
+  }
+
+  function getAllTextNodesTreeWalker(rootElement) {
+    const walker = document.createTreeWalker(rootElement, NodeFilter.SHOW_TEXT,
+      (node) => {
+        return (
+          node.nodeValue.trim().length > 0 &&
+          node.parentElement.tagName !== "SCRIPT" &&
+          node.parentElement.tagName !== "STYLE" &&
+          !findNoTranslateParent(node) // <-- check if the parent has the no-translate class
+        );
+      });
+    const textNodes = [];
+    let node;
+    while ((node = walker.nextNode())) {
+      textNodes.push(node);
+    }
+    return textNodes;
+  }
+
+  function findNoTranslateParent(node) {
+    let current = node;
+
+    while (current) {
+      if (
+        current.classList &&
+        current.classList.contains("no-translate")
+      ) {
+        return current;
+      }
+      current = current.parentNode;
+    }
+    return null;
   }
 
 
@@ -386,19 +439,31 @@ export default function startTranslationObserver(
 
   async function translateTextNodeSafely(node) {
     temporarilyIgnoredNodes.add(node);
+    if (activeTranslationCount === 0) {
+      setIsTranslating(true);
+    }
+    activeTranslationCount++;
+    const originalText = textNodeToStringAll.get(node);
     try {
       const response = await fetch(
-        `${serverUrl}/translate-one?text=${encodeURIComponent(node.textContent)}&lang=${encodeURIComponent(currentLang)}`
+        `${serverUrl}/translate-one?text=${encodeURIComponent(originalText)}&lang=${encodeURIComponent(currentLang)}`
       );
       const data = await response.json();
-      console.log(data.translation);
       node.textContent = data.translation;
     } catch (err) {
       console.log("Error retrieving translation", err);
     }
 
     // After this task completes, allow observing again on the node added to the temporarly modified list
-    Promise.resolve();
+    Promise.resolve().then( () => {
+      temporarilyIgnoredNodes.delete(node); // <-- this weakset cleanup is queued after the MutationObserver callback is queued so that the change is not detected fo the same loop
+      activeTranslationCount--;
+
+      if (activeTranslationCount === 0) {
+        setIsTranslating(false);
+        console.log("<<<<<<<<<<<<<<<<<<<Translation Completed>>>>>>>>>>>>>>>>>>>>")
+      }
+    });
   }
 
 

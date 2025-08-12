@@ -68,7 +68,6 @@ def translate_one(request: Request, text: str, lang: str = ""):
     translation = original_leading + response["response"] + original_trailing
 
     print("Asked for translation of: "+ text + " to " + app_conf.languages[lang])
-    print("Used prompt:\n" + prompt)
     print("translated text: " + translation)
 
     with cache_lock:
