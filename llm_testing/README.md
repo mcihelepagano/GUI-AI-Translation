@@ -11,3 +11,4 @@ table for 1000 sentences generation:
 | nous-hermes2:10.7b   | 17.30      | 36 m 4 s   |
 | llama3.2:3b          | 14.80      | 9 m 47 s   |
 | mistral:7b           | 10.17      | 26 m 5 s   |
+| tinyllama_1.1b_chat_v0.6_fp16 | 3.47 | 12 m 35 s |
