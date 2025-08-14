@@ -2,7 +2,7 @@ import ollama
 import sacrebleu
 import time
 
-MODEL = "gemma3:latest" # "llama3.2:3b" | "nous-hermes2:latest" | "mistral:latest" | "gemma3:latest" | "gemma3:4b-it-qat"
+MODEL = "tinyllama:1.1b-chat-v0.6-fp16" # "llama3.2:3b" | "nous-hermes2:latest" | "mistral:latest" | "gemma3:latest" | "gemma3:4b-it-qat" | "tinyllama:1.1b-chat-v0.6-fp16"
 
 SOURCE_FILE = "europarl-v7.it-en.en"
 REFERENCE_FILE = "europarl-v7.it-en.it"
@@ -28,10 +28,10 @@ for i, sentence in enumerate(source_sentences):
     if i % 10 == 0:
         print(f"Translating sentence {i+1}/{len(source_sentences)}")
 
-    prompt = f"Translate this sentence from English to Italian. Only return the Italian translation without any explanation, no labels, no commentary:\n\n{sentence}"
+    prompt = f"Translate this sentence from English to Italian. Only return the Italian translation without any explanation, no labels, no commentary, just the italian translation:\n\n{sentence}"
 
     response = ollama.generate(model=MODEL, prompt=prompt)
-    translation = response['response'].strip()
+    translation = response['response'].strip().split("\n")[0].strip()
 
     hypotheses.append(translation)
 
