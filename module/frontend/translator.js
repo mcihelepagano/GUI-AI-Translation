@@ -2,7 +2,54 @@
 
 export default function startTranslationObserver(
   serverUrl = "http://127.0.0.1:8000",
-  languageCodes = ['fr', 'en', 'es', 'de', 'it', 'pt', 'zh', 'ja', 'ru'],
+  iso639_1_languageCodes = {
+    "aa": "Afar", "ab": "Abkhazian", "ae": "Avestan", "af": "Afrikaans",
+    "ak": "Akan", "am": "Amharic", "an": "Aragonese", "ar": "Arabic",
+    "as": "Assamese", "av": "Avaric", "ay": "Aymara", "az": "Azerbaijani",
+    "ba": "Bashkir", "be": "Belarusian", "bg": "Bulgarian", "bi": "Bislama",
+    "bm": "Bambara", "bn": "Bengali", "bo": "Tibetan", "br": "Breton",
+    "bs": "Bosnian", "ca": "Catalan", "ce": "Chechen", "ch": "Chamorro",
+    "co": "Corsican", "cr": "Cree", "cs": "Czech", "cu": "Church Slavic",
+    "cv": "Chuvash", "cy": "Welsh", "da": "Danish", "de": "German",
+    "dv": "Divehi", "dz": "Dzongkha", "ee": "Ewe", "el": "Greek",
+    "en": "English", "eo": "Esperanto", "es": "Spanish", "et": "Estonian",
+    "eu": "Basque", "fa": "Persian", "ff": "Fulah", "fi": "Finnish",
+    "fj": "Fijian", "fo": "Faroese", "fr": "French", "fy": "Western Frisian",
+    "ga": "Irish", "gd": "Gaelic", "gl": "Galician", "gn": "Guarani",
+    "gu": "Gujarati", "gv": "Manx", "ha": "Hausa", "he": "Hebrew",
+    "hi": "Hindi", "ho": "Hiri Motu", "hr": "Croatian", "ht": "Haitian",
+    "hu": "Hungarian", "hy": "Armenian", "hz": "Herero", "ia": "Interlingua",
+    "id": "Indonesian", "ie": "Interlingue", "ig": "Igbo", "ii": "Sichuan Yi",
+    "ik": "Inupiaq", "io": "Ido", "is": "Icelandic", "it": "Italian",
+    "iu": "Inuktitut", "ja": "Japanese", "jv": "Javanese", "ka": "Georgian",
+    "kg": "Kongo", "ki": "Kikuyu", "kj": "Kuanyama", "kk": "Kazakh",
+    "kl": "Kalaallisut", "km": "Central Khmer", "kn": "Kannada", "ko": "Korean",
+    "kr": "Kanuri", "ks": "Kashmiri", "ku": "Kurdish", "kv": "Komi",
+    "kw": "Cornish", "ky": "Kirghiz", "la": "Latin", "lb": "Luxembourgish",
+    "lg": "Ganda", "li": "Limburgan", "ln": "Lingala", "lo": "Lao",
+    "lt": "Lithuanian", "lu": "Luba-Katanga", "lv": "Latvian", "mg": "Malagasy",
+    "mh": "Marshallese", "mi": "Maori", "mk": "Macedonian", "ml": "Malayalam",
+    "mn": "Mongolian", "mr": "Marathi", "ms": "Malay", "mt": "Maltese",
+    "my": "Burmese", "na": "Nauru", "nb": "Bokmål, Norwegian", "nd": "Ndebele, North",
+    "ne": "Nepali", "ng": "Ndonga", "nl": "Dutch", "nn": "Norwegian Nynorsk",
+    "no": "Norwegian", "nr": "Ndebele, South", "nv": "Navajo", "ny": "Chichewa",
+    "oc": "Occitan", "oj": "Ojibwa", "om": "Oromo", "or": "Oriya",
+    "os": "Ossetian", "pa": "Panjabi", "pi": "Pali", "pl": "Polish",
+    "ps": "Pushto", "pt": "Portuguese", "qu": "Quechua", "rm": "Romansh",
+    "rn": "Rundi", "ro": "Romanian", "ru": "Russian", "rw": "Kinyarwanda",
+    "sa": "Sanskrit", "sc": "Sardinian", "sd": "Sindhi", "se": "Northern Sami",
+    "sg": "Sango", "si": "Sinhala", "sk": "Slovak", "sl": "Slovenian",
+    "sm": "Samoan", "sn": "Shona", "so": "Somali", "sq": "Albanian",
+    "sr": "Serbian", "ss": "Swati", "st": "Sotho, Southern", "su": "Sundanese",
+    "sv": "Swedish", "sw": "Swahili", "ta": "Tamil", "te": "Telugu",
+    "tg": "Tajik", "th": "Thai", "ti": "Tigrinya", "tk": "Turkmen",
+    "tl": "Tagalog", "tn": "Tswana", "to": "Tonga", "tr": "Turkish",
+    "ts": "Tsonga", "tt": "Tatar", "tw": "Twi", "ty": "Tahitian",
+    "ug": "Uighur", "uk": "Ukrainian", "ur": "Urdu", "uz": "Uzbek",
+    "ve": "Venda", "vi": "Vietnamese", "vo": "Volapük", "wa": "Walloon",
+    "wo": "Wolof", "xh": "Xhosa", "yi": "Yiddish", "yo": "Yoruba",
+    "za": "Zhuang", "zh": "Chinese", "zu": "Zulu"
+  },
   selectPosition = "position: fixed; bottom: 20px; right: 20px;",
 ) {
 
@@ -44,7 +91,19 @@ export default function startTranslationObserver(
 
   function setIsTranslating(value) {
     isTranslating = value;
-    document.getElementById("module-language-selector").disabled = value;
+
+    const spinner = document.getElementById("module-language-spinner");
+    const code = document.getElementById("module-language-code");
+    //  show spinner and hide code when translating
+    if (spinner && code) {
+      spinner.style.display = isTranslating ? "block" : "none";
+      code.style.display = isTranslating ? "none" : "block";
+    }
+    const wrapper = document.getElementById("injected-module-language-selector-wrapper");
+    //  hide selector when translating so a new language cannot be selected before translation is finished
+    if (wrapper) {
+      wrapper.style.pointerEvents = isTranslating ? "none" : "auto";
+    }
   }
 
   document.addEventListener("DOMContentLoaded", () => {
@@ -67,94 +126,136 @@ export default function startTranslationObserver(
 
   function injectSelectHTML() {
     const html = `
-      <div 
+    <div 
         id="injected-module-language-selector-wrapper"
         style="${selectPosition} z-index: 10000; cursor: pointer; font-family: sans-serif;"
-        class="no-translate"
+      class="no-translate"
         onmouseenter="
           document.getElementById('module-language-selector-display').style.display='none'; 
           document.getElementById('module-language-selector-container').style.display='block';
         "
         onmouseleave="
           document.getElementById('module-language-selector-container').style.display='none'; 
-          document.getElementById('module-language-selector-display').style.display='block';
+          document.getElementById('module-language-selector-display').style.display='flex';
+        "
+    >
+      <div 
+        id="module-language-selector-display"
+        class="no-translate"
+        style="
+          position: relative;
+          background: white;
+          border: 1px solid #ccc;
+          border-radius: 8px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+          width: 45px;
+          height: 45px;
+          font-size: 16px;
+          user-select: none;
+          display:flex;
+          align-items:center;
+          justify-content:center;
         "
       >
-        <div 
-          id="module-language-selector-display"
-          class="no-translate" 
-          style="
-            background: white; 
-            border: 1px solid #ccc; 
-            border-radius: 8px; 
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2); 
-            width: 40px; 
-            height: 40px; 
-            line-height: 40px; 
-            font-size: 20px; 
-            text-align: center;
-            user-select: none;
-          "
-        >
-          🌐
-        </div>
-        <div 
-          id="module-language-selector-container"
-          class="no-translate" 
-          style="
-            display: none;
-            background: white; 
-            border: 1px solid #ccc; 
-            border-radius: 8px; 
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-            padding: 10px;
-            white-space: nowrap;
-          "
-        >
-          <label for="module-language-selector" style="margin-right: 8px;">Language:</label>
-          <select id="module-language-selector" style="padding: 4px;"></select>
-        </div>
+      <span id="module-language-code">${currentLang.toUpperCase()}</span>
+      <div class="spinner-border" role="status" id="module-language-spinner" style="display:none; position: absolute; z-index:100000;">
+        <span class="visually-hidden">Translating...</span>
       </div>
-      `;
+      </div>
+      <div 
+        id="module-language-selector-container"
+        class="no-translate" 
+        style="
+          display: none;
+          background: white; 
+          border: 1px solid #ccc; 
+          border-radius: 8px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+          padding: 10px;
+          width: 220px; 
+          height: 268px; 
+          overflow-y: auto; 
+          overflow-x: hidden;
+        "
+      >
+        <input id="module-language-search" type="text" placeholder="Search..." style="padding:4px; width:100%; margin-bottom:5px;"/>
+        <div id="module-language-list" style="max-height:200px; overflow-y:auto;"></div>
+      </div>
+    </div>
+  `;
+
     document.body.insertAdjacentHTML("beforeend", html);
 
-    injectSelectOptionsHTML();
+    injectSelectOptionsHTML(iso639_1_languageCodes);
+    setupSearch();
+  }
 
-    document.getElementById("module-language-selector").addEventListener("change", async (e) => {
-      currentLang = e.target.value;
-      console.log(`Language changed to: ${currentLang}`);
-      if (currentLang === originalLang) {
-        loadOriginalText();
-      } else {
-        await loadPageTranslated_translate_one();
+  function injectSelectOptionsHTML(languages) {
+    const container = document.getElementById("module-language-list");
+    const searchInput = document.getElementById("module-language-search");
+    const displayDiv = document.getElementById("module-language-selector-display");
+    const langDisplay = document.getElementById("module-language-code");
+    container.innerHTML = "";
 
-        injectSelectOptionsHTML();
-      }
+    // sort languages so the originalLang is always first for easy access
+    const sortedLanguages = Object.entries(languages).sort(([codeA], [codeB]) => {
+      if (codeA === originalLang) return -1;
+      if (codeB === originalLang) return 1;
+      return languages[codeA].localeCompare(languages[codeB]); // alphabetical for the rest
+    });
+
+    for (const [code, name] of sortedLanguages) {
+      const item = document.createElement("div");
+      item.textContent = code === originalLang ? `${name} (Original)` : name;
+      item.dataset.code = code;
+      item.style.padding = "4px 8px";
+      item.style.cursor = "pointer";
+      if (code === currentLang) item.style.background = "#e0e0e0";
+
+      //  on click set currentLang, isTranslating and translate
+      item.addEventListener("click", async () => {
+        searchInput.value = name;
+        currentLang = code;
+        document.getElementById("module-language-selector-container").style.display = "none";
+        displayDiv.style.display = "flex";
+        langDisplay.textContent = code.toUpperCase();
+
+        if (currentLang === originalLang) {
+          loadOriginalText();
+        } else {
+          await loadPageTranslated_translate_one();
+        }
+
+        // Update highlight for selected language
+        container.querySelectorAll('div').forEach(el => {
+          el.style.background = el.dataset.code === currentLang ? "#e0e0e0" : "";
+        });
+      });
+
+      container.appendChild(item);
+    }
+
+    // Set initial input and display
+    searchInput.value = languages[currentLang] || currentLang;
+    langDisplay.textContent = currentLang.toUpperCase();
+  }
+
+
+  function setupSearch() {
+    const searchInput = document.getElementById("module-language-search");
+    const container = document.getElementById("module-language-list");
+    const items = Array.from(container.children);
+
+    //  only show items that include input from user
+    searchInput.addEventListener("input", () => {
+      const filter = searchInput.value.toLowerCase();
+
+      items.forEach(item => {
+        item.hidden = !item.textContent.toLowerCase().includes(filter);
+      });
     });
   }
 
-  function injectSelectOptionsHTML() {
-    const displayNames = new Intl.DisplayNames([currentLang], { type: 'language' });
-
-    const languages = {};
-    for (const code of languageCodes) {
-      languages[code] = displayNames.of(code);
-    }
-    let optionsHTML = "";
-    for (const [code, name] of Object.entries(languages)) {
-      let text = name;
-      let selected = "";
-      if (code === originalLang) {
-        text += " (Original)";
-      }
-      if (code === currentLang) {
-        selected = " selected";
-      }
-      optionsHTML += `<option value="${code}"${selected}>${text}</option>`;
-    }
-
-    document.getElementById("module-language-selector").innerHTML = optionsHTML;
-  }
 
 
   function isTranslateIgnore(node) {
