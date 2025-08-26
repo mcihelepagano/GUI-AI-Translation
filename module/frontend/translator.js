@@ -53,6 +53,8 @@ export default function startTranslationObserver(
   selectPosition = "position: fixed; bottom: 20px; right: 20px;",
 ) {
 
+  const useTranslateMany = true;
+
   // MODULE SETUP
   const root = document.body;
   const temporarilyIgnoredNodes = new WeakSet();
@@ -223,7 +225,11 @@ export default function startTranslationObserver(
         if (currentLang === originalLang) {
           loadOriginalText();
         } else {
-          await loadPageTranslated_translate_one();
+          if(useTranslateMany){
+            await loadPageTranslated_translate_many();
+          }else{
+            await loadPageTranslated_translate_one();
+          }
         }
 
         // Update highlight for selected language
@@ -454,9 +460,10 @@ export default function startTranslationObserver(
     const textsToTranslate = Array.from(stringToTextNodes.keys());
 
     const ret = await translateWithStreaming(textsToTranslate, currentLang, (line) => {
-      if (!line.includes(" ===== ")) return Promise.resolve();
+      if (!line.includes("->")) return Promise.resolve();
 
-      const [originalText, translatedText] = line.split(" ===== ");
+      const [indexOriginal, translatedText] = line.split("->");
+      const originalText = textsToTranslate[parseInt(indexOriginal)];
       const nodes = stringToTextNodes.get(originalText);
 
       if (nodes && nodes.length > 0) {

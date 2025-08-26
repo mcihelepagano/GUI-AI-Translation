@@ -30,13 +30,14 @@ prompt_templates = {
         "Text:"
     ),
     "phrase_list": (
-        "You are a translation engine. Translate the following list of texts to {0}."
-        "If a text is already in {0}, return it exactly as-is. "
-        "Do not explain, do not comment, and do not include any reasoning or metadata. "
-        "The output should be a single string containing all original text translations, separated by new lines "
-        "in the following format: original_text_1 ===== translated_text_1\noriginal_text_2 ===== translated_text_2\n"
-        "Preserve all numerals and symbols exactly as they appear, DO NOT translate them into natural language. print the original text always as-is without changing it.\n"
-        "The following are the input texts separated by new lines:"
+        "You are a translation engine. Translate the numbered list of phrases below into {0}.\n"
+        "DO NOT translate or output anything else. DO NOT translate these instructions.\n"
+        "DO NOT include explanations or commentary.\n"
+        "Keep numbers and symbols exactly as they appear. BE CAREFUL to not add leading or trailing symbols (including punctuation) if they are not present.\n\n"
+        "The input I am giving you is a list of words or phrases, each preceded by it's index\n"
+        "INPUT FORMAT:index->text_to_be_translated\n"
+        "The output should be the numbered list of translations of text_to_be_translated into {0} in the same format index->translated_text, one per line, in the same order as the input.\n"
+        "The following is the input list:"
     )
 }
 
@@ -76,7 +77,9 @@ def split_prompts_by_token_limit(prompt_type: str, lang: str, params: list[str] 
             else:
                 high = mid - 1
 
-        final_chunk = params[i:i + best_fit]
+        final_chunk = []
+        for index, str in enumerate(params[i:i + best_fit], start=i):
+            final_chunk.append(f"{index}->{str}")
         final_prompt = get_prompt(prompt_type, lang, final_chunk)
         prompts.append(final_prompt)
         i += best_fit

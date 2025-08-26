@@ -99,6 +99,7 @@ async def translate_many(request: Request, body: TextList, lang: str = Query(...
 
 
 def stream_AI_response(prompts: list[str]):
+    print("Starting streaming response from AI model...")
     def generator():
         for prompt in prompts:
             stream = ollama.generate(model=app_conf.model_name, prompt=prompt, stream=True)
