@@ -6,7 +6,7 @@ import App from './App.jsx'
 
 import startTranslationObserver from '../../module/frontend/translator.js'
 
-startTranslationObserver();
+startTranslationObserver("http://127.0.0.1:8000", "Bottom-Left", ["en", "fr"]);
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

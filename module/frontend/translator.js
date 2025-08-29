@@ -2,7 +2,10 @@
 
 export default function startTranslationObserver(
   serverUrl = "http://127.0.0.1:8000",
-  iso639_1_languageCodes = {
+  selectedPosition = "Bottom-Right", //posiiton should be one of "Bottom-Left", "Top-Left", "Top-Right", "Bottom-Right"
+  languages //languages should be passed as an array of strings containing the codes that the user wants to support translation for within the iso 639.1 standard
+) {
+  const iso639_1_languageCodes = {
     "aa": "Afar", "ab": "Abkhazian", "ae": "Avestan", "af": "Afrikaans",
     "ak": "Akan", "am": "Amharic", "an": "Aragonese", "ar": "Arabic",
     "as": "Assamese", "av": "Avaric", "ay": "Aymara", "az": "Azerbaijani",
@@ -49,18 +52,18 @@ export default function startTranslationObserver(
     "ve": "Venda", "vi": "Vietnamese", "vo": "Volapük", "wa": "Walloon",
     "wo": "Wolof", "xh": "Xhosa", "yi": "Yiddish", "yo": "Yoruba",
     "za": "Zhuang", "zh": "Chinese", "zu": "Zulu"
-  },
-  selectPosition = "position: fixed; bottom: 20px; right: 20px;",
-) {
+  }
+
+  //if languages is passed it should be an array
+  if (languages !== undefined && !Array.isArray(languages)) {
+    throw new TypeError("languages must be an array of ISO639-1 codes");
+  }
 
   // MODULE SETUP
   const root = document.body;
   const temporarilyIgnoredNodes = new WeakSet();
   let activeTranslationCount = 0;
   let originalLang = document.documentElement.lang;
-  if (!originalLang) {
-    originalLang = (navigator.language || navigator.userLanguage).split('-')[0]; // default browser language
-  }
   let currentLang = originalLang;
 
   function evalShouldTranslate() {
@@ -125,10 +128,30 @@ export default function startTranslationObserver(
   // MODULE HTML INJECTION
 
   function injectSelectHTML() {
+    let position;
+
+    switch (selectedPosition) {
+      case "Bottom-Left":
+        position = "bottom: 20px; left: 20px;";
+        break;
+      case "Top-Left":
+        position = "top: 20px; left: 20px;";
+        break;
+      case "Top-Right":
+        position = "top: 20px; right: 20px;";
+        break;
+      case "Bottom-Right":
+        position = "bottom: 20px; right: 20px;";
+        break;
+      default:
+        position = "bottom: 20px; right: 20px;";
+        break;
+    }
+
     const html = `
     <div 
         id="injected-module-language-selector-wrapper"
-        style="${selectPosition} z-index: 10000; cursor: pointer; font-family: sans-serif;"
+        style="${position} position:fixed; z-index: 10000; cursor: pointer; font-family: sans-serif;"
       class="no-translate"
         onmouseenter="
           document.getElementById('module-language-selector-display').style.display='none'; 
@@ -173,20 +196,30 @@ export default function startTranslationObserver(
           box-shadow: 0 2px 6px rgba(0,0,0,0.2);
           padding: 10px;
           width: 220px; 
-          height: 268px; 
+          max-height: 268px; 
           overflow-y: auto; 
           overflow-x: hidden;
         "
       >
         <input id="module-language-search" type="text" placeholder="Search..." style="padding:4px; width:100%; margin-bottom:5px;"/>
-        <div id="module-language-list" style="max-height:200px; overflow-y:auto;"></div>
+        <div id="module-language-list"></div>
       </div>
     </div>
   `;
 
     document.body.insertAdjacentHTML("beforeend", html);
 
-    injectSelectOptionsHTML(iso639_1_languageCodes);
+    let supportedLanguages;
+    //if languages is passed then filter the supported languages else keep them all
+    if (languages && languages.length > 0) {
+      supportedLanguages = Object.fromEntries(
+        Object.entries(iso639_1_languageCodes).filter(entry => (languages.includes(entry[0]) || entry[0] === currentLang))
+      );
+    } else {
+      supportedLanguages = iso639_1_languageCodes;
+    }
+
+    injectSelectOptionsHTML(supportedLanguages);
     setupSearch();
   }
 
