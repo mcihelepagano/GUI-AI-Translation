@@ -183,9 +183,21 @@ export default function startTranslationObserver(
         "
       >
       <span id="module-language-code">${currentLang.toUpperCase()}</span>
-      <div class="spinner-border" role="status" id="module-language-spinner" style="display:none; position: absolute; z-index:100000;">
-        <span class="visually-hidden">Translating...</span>
-      </div>
+      <div id="module-language-spinner" role="status" style="display:none; position:absolute; z-index:100000;"></div>
+
+      <style>
+      #module-language-spinner {
+        width: 30px;
+        height: 30px;
+        border: 0.25em solid #dee2e6;
+        border-top: 0.25em solid #424242ff;
+        border-radius: 50%;
+        animation: module-spinner-spin 0.75s linear infinite;
+      }
+      @keyframes module-spinner-spin {
+        100% { transform: rotate(360deg); }
+      }
+      </style>
       </div>
       <div 
         id="module-language-selector-container"
@@ -446,47 +458,13 @@ export default function startTranslationObserver(
   }
 
   function loadPageTranslated_translate_one() {
-    const initTextNodes = getAllTextNodesTreeWalker(document.body);
-    for (let textNode of initTextNodes) {
+    const nodesToTranslate = Array.from(textNodeToStringAll.keys());
+    for (let textNode of nodesToTranslate) {
       if (!temporarilyIgnoredNodes.has(textNode)) {
         translateTextNodeSafely(textNode);
       }
     }
   }
-
-  function getAllTextNodesTreeWalker(rootElement) {
-    const walker = document.createTreeWalker(rootElement, NodeFilter.SHOW_TEXT,
-      (node) => {
-        return (
-          node.nodeValue.trim().length > 0 &&
-          node.parentElement.tagName !== "SCRIPT" &&
-          node.parentElement.tagName !== "STYLE" &&
-          !findNoTranslateParent(node) // <-- check if the parent has the no-translate class
-        );
-      });
-    const textNodes = [];
-    let node;
-    while ((node = walker.nextNode())) {
-      textNodes.push(node);
-    }
-    return textNodes;
-  }
-
-  function findNoTranslateParent(node) {
-    let current = node;
-
-    while (current) {
-      if (
-        current.classList &&
-        current.classList.contains("no-translate")
-      ) {
-        return current;
-      }
-      current = current.parentNode;
-    }
-    return null;
-  }
-
 
   async function loadPageTranslated_translate_many() {
     setIsTranslating(true);
