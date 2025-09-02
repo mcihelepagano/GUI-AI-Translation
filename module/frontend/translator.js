@@ -61,6 +61,23 @@ export default function startTranslationObserver(
 
   const useTranslateMany = true;
 
+  var startTime = null;
+  
+  function logTime(start) {
+    const mode = useTranslateMany ? "translate-many" : "translate-one";
+    if (start) {
+      startTime = performance.now();
+      console.log(">>>>>>>>>>>>>>>>>>Starting Translation<<<<<<<<<<<<<<<<<<");
+    console.log("Translation mode '" + mode + "' start Time:", new Date().toISOString());
+    } else {
+    const elapsed = performance.now() - startTime;
+    console.log("Translation mode '" + mode + "' end Time:", new Date().toISOString());
+    console.log("Elapsed time:", (elapsed / 1000).toFixed(2), "seconds");
+      console.log(">>>>>>>>>>>>>>>>>>Translation Finished<<<<<<<<<<<<<<<<<<");
+    }
+  }
+
+
   // MODULE SETUP
   const root = document.body;
   const temporarilyIgnoredNodes = new WeakSet();
@@ -270,6 +287,7 @@ export default function startTranslationObserver(
         if (currentLang === originalLang) {
           loadOriginalText();
         } else {
+          logTime(true);
           if(useTranslateMany){
             await loadPageTranslated_translate_many();
           }else{
@@ -438,7 +456,6 @@ export default function startTranslationObserver(
     });
 
     isDomChanging = false;
-    console.log(`Found ${textNodeToStringAll.size} text nodes.`, textNodeToStringAll);
   });
 
 
@@ -492,6 +509,7 @@ export default function startTranslationObserver(
     });
 
     setIsTranslating(false);
+    logTime(false);
     return ret;
   }
 
@@ -580,10 +598,12 @@ export default function startTranslationObserver(
 
       if (activeTranslationCount === 0) {
         setIsTranslating(false);
-        console.log("<<<<<<<<<<<<<<<<<<<Translation Completed>>>>>>>>>>>>>>>>>>>>")
+        logTime(false);
       }
     });
   }
+
+
 
 
 }
