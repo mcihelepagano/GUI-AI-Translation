@@ -12,9 +12,9 @@ logging.set_verbosity_error()
 
 MODEL_PATH = "TinyLlama/TinyLlama-1.1B-Chat-v0.6"
 
-SOURCE_FILE = "../europarl-v7.it-en.en"
-REFERENCE_FILE = "../europarl-v7.it-en.it"
-OUTPUT_FILE = "generated_translations.it"
+SOURCE_FILE = "../europarl-v7.de-en.en"
+REFERENCE_FILE = "../europarl-v7.de-en.de"
+OUTPUT_FILE = "generated_translations.de"
 
 MAX_SENTENCES = 1000
 BLEU_INTERVAL = 1000
@@ -57,7 +57,7 @@ for i, sentence in enumerate(source_sentences):
     if i % 10 == 0:
         print(f"Translating sentence {i+1}/{len(source_sentences)}")
 
-    prompt = f"English sentence: {sentence}. Translate the sentence to Italian and output only the sentence, no explanation, commentary or labels:"
+    prompt = f"English sentence: {sentence}. Translate the sentence to German and output only the sentence, no explanation, commentary or labels:"
 
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
 
