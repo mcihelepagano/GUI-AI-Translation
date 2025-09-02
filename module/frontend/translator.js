@@ -68,11 +68,12 @@ export default function startTranslationObserver(
     if (start) {
       startTime = performance.now();
       console.log(">>>>>>>>>>>>>>>>>>Starting Translation<<<<<<<<<<<<<<<<<<");
-    console.log("Translation mode '" + mode + "' start Time:", new Date().toISOString());
+      console.log("Translation mode '" + mode + "' start Time:", new Date().toISOString());
+      console.log("Translating", textNodeToStringAll.size, "text nodes");
     } else {
-    const elapsed = performance.now() - startTime;
-    console.log("Translation mode '" + mode + "' end Time:", new Date().toISOString());
-    console.log("Elapsed time:", (elapsed / 1000).toFixed(2), "seconds");
+      const elapsed = performance.now() - startTime;
+      console.log("Translation mode '" + mode + "' end Time:", new Date().toISOString());
+      console.log("Elapsed time:", (elapsed / 1000).toFixed(2), "seconds");
       console.log(">>>>>>>>>>>>>>>>>>Translation Finished<<<<<<<<<<<<<<<<<<");
     }
   }
