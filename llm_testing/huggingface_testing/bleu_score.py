@@ -12,9 +12,9 @@ logging.set_verbosity_error()
 
 MODEL_PATH = "TinyLlama/TinyLlama-1.1B-Chat-v0.6"
 
-SOURCE_FILE = "../europarl-v7.de-en.en"
-REFERENCE_FILE = "../europarl-v7.de-en.de"
-OUTPUT_FILE = "generated_translations.de"
+SOURCE_FILE = "../europarl-v7.it-en.en"
+REFERENCE_FILE = "../europarl-v7.it-en.it"
+OUTPUT_FILE = "generated_translations.it"
 
 MAX_SENTENCES = 1000
 BLEU_INTERVAL = 1000
@@ -24,7 +24,7 @@ os.environ["DISABLE_TORCHINDUCTOR"] = "1"
 os.environ["TORCHDYNAMO_DISABLE"] = "1"
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-dtype = torch.float16 if device == "cuda" else torch.float32
+dtype = torch.float16
 
 print(f"Loading model: {MODEL_PATH} on device: {device}")
 
@@ -57,7 +57,7 @@ for i, sentence in enumerate(source_sentences):
     if i % 10 == 0:
         print(f"Translating sentence {i+1}/{len(source_sentences)}")
 
-    prompt = f"English sentence: {sentence}. Translate the sentence to German and output only the sentence, no explanation, commentary or labels:"
+    prompt = f"English sentence: {sentence}. Translate the sentence to Italian and output only the sentence, no explanation, commentary or labels:"
 
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
 

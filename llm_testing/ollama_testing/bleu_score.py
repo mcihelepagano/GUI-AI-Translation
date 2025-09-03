@@ -4,9 +4,9 @@ import time
 
 MODEL = "tinyllama:1.1b-chat-v0.6-fp16" # "llama3.2:3b" | "nous-hermes2:latest" | "mistral:latest" | "gemma3:latest" | "gemma3:4b-it-qat" | "tinyllama:1.1b-chat-v0.6-fp16"
 
-SOURCE_FILE = "../europarl-v7.de-en.en"
-REFERENCE_FILE = "../europarl-v7.de-en.de"
-OUTPUT_FILE = "./results/generated_translations.de"
+SOURCE_FILE = "../europarl-v7.it-en.en"
+REFERENCE_FILE = "../europarl-v7.it-en.it"
+OUTPUT_FILE = "./results/generated_translations.it"
 
 MAX_SENTENCES = 1000
 BLEU_INTERVAL = 1000  # Interval to compute intermediate BLEU scores

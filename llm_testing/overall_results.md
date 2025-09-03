@@ -44,6 +44,7 @@ each "x-generated_translation.lang" file contains the time taken by llm "x" to t
 #HUGGING FACE and OLLAMA COMPARISON
 
 testing was done using the model tinyllama-1.1b-chat-v0.6 
+
 | framework            | language | BLEU score | Time Taken   |
 |----------------------|----------|------------|--------------|
 | ollama               | italian  | 3.47       | 12 m 35 s    |
