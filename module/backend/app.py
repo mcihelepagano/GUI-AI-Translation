@@ -23,6 +23,10 @@ app.mount("/static", StaticFiles(directory="../frontend"), name="static")
 cache = {}
 cache_lock = threading.Lock()
 
+def addToCache(cache_key, translation: str):
+    with cache_lock:
+        cache[cache_key] = translation
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -117,9 +121,7 @@ def translate_one(request: Request, text: str, lang: str = ""):
     print("Asked for translation of: "+ text + " to " + app_conf.languages[lang])
     print("translated text: " + translation)
 
-    with cache_lock:
-        cache[cache_key] = translation
-
+    addToCache(cache_key, translation)
         
     elapsed_ms = (time.perf_counter() - start_time) * 1000
     with translate_one_lock:
@@ -142,28 +144,51 @@ async def translate_many(request: Request, body: TextList, lang: str = Query(...
     if not body or not body.texts:
         raise HTTPException(status_code=400, detail="No text provided. Use ?text=...&text=... in the query.")
     
-    prompts = app_utils.split_prompts_by_token_limit("phrase_list", lang, body.texts)
+    input_map = {i: value for i, value in enumerate(body.texts)}
+    cached_output_map = {}
+    cache_hits = 0
+    for i, text in input_map.items():
+        cache_key = (text, lang)
+        with cache_lock:
+            if cache_key in cache:
+                cached_output_map[i] = cache[cache_key]
+                cache_hits += 1
+    print(f"Cache hits: {cache_hits}/{len(body.texts)}")
+    
+    input_map = {i: text for i, text in input_map.items() if i not in cached_output_map}
+    if not input_map:
+        print("All texts were cached.")
+        prompts=[]
+    else:
+        prompts = app_utils.split_prompts_by_token_limit("phrase_list", lang, input_map)
 
     start_time = time.perf_counter()
 
     # wrap the generator so we know when it finishes
-    def timed_stream(prompts: list[str]):
-        for chunk in stream_AI_response(prompts):
-            yield chunk
+    def timed_stream(prompts: list[str], input_map: dict[int, str], cached_output_map: dict[int, str], lang):
+        for i in sorted(cached_output_map.keys()):
+            yield f"{i}->{cached_output_map[i]}\n"
+        
+        if prompts:
+            for chunk in stream_AI_response(prompts, input_map, lang):
+                yield chunk
         # when generator completes, record elapsed time
         elapsed_ms = (time.perf_counter() - start_time) * 1000
+        print(f"translate_many completed in {elapsed_ms:.2f} ms", flush=True)
         with translate_many_lock:
             translate_many_times.append(elapsed_ms)
 
     return StreamingResponse(
-        timed_stream(prompts),
+        timed_stream(prompts, input_map, cached_output_map, lang),
         media_type="text/plain"
     )
 
 
-def stream_AI_response(prompts: list[str]):
+
+def stream_AI_response(prompts: list[str], input_map: dict[int, str], lang: str):
     print("Starting streaming response from AI model...")
     def generator():
+        index_separator = "->"
         for prompt in prompts:
             stream = ollama.generate(model=app_conf.model_name, prompt=prompt, stream=True)
             buffer = ""
@@ -174,10 +199,32 @@ def stream_AI_response(prompts: list[str]):
                         parts = buffer.split("\n")
                         for part in parts[:-1]:
                             print(part, flush=True)
+                            
+                            if index_separator in part:
+                                index_str, translation = part.split(index_separator, 1)
+                                try:
+                                    index = int(index_str)
+                                    if index in input_map:
+                                        addToCache((input_map[index], lang), translation)
+                                    else:
+                                        print(f"Warning: caching -> index {index} not found in input_map", flush=True)
+                                except ValueError:
+                                    print(f"Warning: caching -> could not convert index '{index_str}' to int in part '{part}'", flush=True)
+
                             yield part + "\n"
                         buffer = parts[-1]
             if buffer:
                 print(buffer, flush=True)
+                if index_separator in part:
+                    index_str, translation = part.split(index_separator, 1)
+                    try:
+                        index = int(index_str)
+                        if index in input_map:
+                            addToCache((input_map[index], lang), translation)
+                        else:
+                            print(f"Warning: caching -> index {index} not found in input_map", flush=True)
+                    except ValueError:
+                        print(f"Warning: caching -> could not convert index '{index_str}' to int in part '{part}'", flush=True)
                 yield buffer + "\n"
 
     return generator()

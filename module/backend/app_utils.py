@@ -52,23 +52,22 @@ def get_prompt(prompt_type: str, lang: str, params: list[str]) -> str:
     return prompt
 
 
-
-
-def split_prompts_by_token_limit(prompt_type: str, lang: str, params: list[str] ) -> list[str]:
+def split_prompts_by_token_limit(prompt_type: str, lang: str, params: dict[int, str] ) -> list[str]:
     max_tokens = app_conf.get_token_limit()
     prompts = []
+    
+    items = sorted(params.items(), key=lambda x: x[0])
     i = 0
     while i < len(params):
         low = 1
         high = len(params) - i
-
         best_fit = 1
 
         # Binary search to find the largest chunk that fits within the token limit
         while low <= high:
             mid = (low + high) // 2
-            trial_chunk = params[i:i + mid]
-            trial_prompt = get_prompt(prompt_type, lang, trial_chunk)
+            trial_chunk = items[i:i + mid]
+            trial_prompt = get_prompt(prompt_type, lang, [f"{k}->{v}" for k, v in trial_chunk])
             token_count = count_tokens(trial_prompt)
 
             if token_count <= max_tokens:
@@ -77,9 +76,7 @@ def split_prompts_by_token_limit(prompt_type: str, lang: str, params: list[str] 
             else:
                 high = mid - 1
 
-        final_chunk = []
-        for index, str in enumerate(params[i:i + best_fit], start=i):
-            final_chunk.append(f"{index}->{str}")
+        final_chunk = [f"{k}->{v}" for k, v in items[i:i + best_fit]]
         final_prompt = get_prompt(prompt_type, lang, final_chunk)
         prompts.append(final_prompt)
         i += best_fit
