@@ -497,10 +497,9 @@ export default function startTranslationObserver(
 
       if (nodes && nodes.length > 0) {
         nodes.forEach(textNode => {
-          if (textNode.textContent === originalText) {
             temporarilyIgnoredNodes.add(textNode);
             textNode.textContent = translatedText;
-          }
+          
         });
       } else {
         console.warn("Text nodes not found for original text:", originalText);

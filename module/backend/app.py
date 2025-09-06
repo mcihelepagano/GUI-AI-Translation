@@ -8,6 +8,7 @@ import ollama
 import threading
 import string
 import time
+import json 
 
 import app_conf
 import app_utils
@@ -145,6 +146,10 @@ async def translate_many(request: Request, body: TextList, lang: str = Query(...
         raise HTTPException(status_code=400, detail="No text provided. Use ?text=...&text=... in the query.")
     
     input_map = {i: value for i, value in enumerate(body.texts)}
+
+    print(f"Translating {len(body.texts)} texts to {app_conf.languages[lang]}")
+    print(json.dumps(input_map, indent=4, ensure_ascii=False))
+
     cached_output_map = {}
     cache_hits = 0
     for i, text in input_map.items():
@@ -156,6 +161,7 @@ async def translate_many(request: Request, body: TextList, lang: str = Query(...
     print(f"Cache hits: {cache_hits}/{len(body.texts)}")
     
     input_map = {i: text for i, text in input_map.items() if i not in cached_output_map}
+    
     if not input_map:
         print("All texts were cached.")
         prompts=[]
