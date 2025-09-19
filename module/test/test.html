@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Translation Observer Test</title>
+
+  <!-- Load the translation observer as a module -->
+  <script type="module">
+    import startTranslationObserver from 'http://127.0.0.1:8000/static/translator.js';
+    startTranslationObserver("http://127.0.0.1:8000");
+  </script>
+</head>
+<body>
+  <h1>Welcome to the test page</h1>
+  <p>This is a paragraph with some text.</p>
+  <div>
+    <span>Another line that should be translated.</span>
+  </div>
+  <footer>
+    Contact us for more information.
+  </footer>
+</body>
+</html>
